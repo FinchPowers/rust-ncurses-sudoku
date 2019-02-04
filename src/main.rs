@@ -6,17 +6,10 @@ extern crate ncurses;
 use ncurses::*;
 use std::cmp;
 
-const FULL_LINE: &str = "-------------------";
+const FULL_LINE: &str = "-------------------------------------------------------\n";
+const CELL_LINE: &str = "|     |     |     |     |     |     |     |     |     |\n";
 const DIRECTIONS: [i32; 4] = [KEY_LEFT, KEY_RIGHT, KEY_DOWN, KEY_UP];
 //const NUMBERS: [i32, 10] = [0, 1, ]
-
-fn print_full_line() {
-    printw(FULL_LINE);
-}
-
-fn print_data_line() {
-    printw("| | | | | | | | | |");
-}
 
 #[derive(Default)]
 pub struct Grid {
@@ -42,21 +35,30 @@ impl Grid {
         }
         self.cur_x = cmp::min(8, cmp::max(0, self.cur_x));
         self.cur_y = cmp::min(8, cmp::max(0, self.cur_y));
-        //mvaddch(self.cur_y, self.cur_x, ACS_CKBOARD());
-        mv(self.cur_y * 2 + 2, self.cur_x * 2 + 1);
+        self.cur();
+    }
+
+    pub fn cur(&mut self) {
+        mv(self.cur_y * 4 + 3, self.cur_x * 6 + 3);
+    }
+
+    pub fn put_cur(&mut self, x: i32, y: i32) {
+        self.cur_x = x;
+        self.cur_y = y;
+        self.cur();
     }
 
     pub fn input_num(&mut self, num: i32) {
         attron(A_UNDERLINE());
         printw(&char::from(num as u8).to_string());
         attroff(A_UNDERLINE());
-        mv(self.cur_y * 2 + 2, self.cur_x * 2 + 1);
+        self.cur();
         self.base_content[self.cur_x as usize][self.cur_y as usize] = num - 48;
     }
 
     pub fn erase(&mut self) {
         printw(" ");
-        mv(self.cur_y * 2 + 2, self.cur_x * 2 + 1);
+        self.cur();
         self.base_content[self.cur_x as usize][self.cur_y as usize] = 0;
     }
 
@@ -118,7 +120,7 @@ impl Grid {
                 up = false;
                 for i in self.content[x][y]..9 {
                     self.content[x][y] = i + 1;
-                    mv(y as i32 * 2 + 2, x as i32 * 2 + 1);
+                    self.put_cur(x as i32, y as i32);
                     printw(&(i + 1).to_string());
                     if self.validate_pos(x, y) {
                         up = true;
@@ -153,13 +155,15 @@ impl Grid {
 }
 
 fn print_grid() {
-    for number in (0..19).rev() {
-        mv(1 + number, 0);
-        if number % 2 == 0 {
-            print_full_line();
-        } else {
-            print_data_line();
-        }
+    mv(1, 0);
+    printw(FULL_LINE);
+
+    for _ in 0..9 {
+        printw(CELL_LINE);
+        printw(CELL_LINE);
+        printw(CELL_LINE);
+
+        printw(FULL_LINE);
     }
 }
 
@@ -172,12 +176,12 @@ fn main() {
     /* Print to the back buffer. */
     printw("Welcome to Sudoku in ncurses + rust");
     print_grid();
-        mv(2, 1);
 
     /* Update the screen. */
     refresh();
 
     let mut grid: Grid = Default::default();
+    grid.cur();
 
     /* Wait for a key press. */
     loop {
@@ -196,14 +200,14 @@ fn main() {
         }
         else if c == 99 {
             grid.solve();
-            mv(25, 0);
+            mv(40, 0);
             for y in 0..9 {
                 for x in 0..9 {
                     printw(&grid.content[x][y].to_string());
                 }
                 printw("\n");
             }
-            mv(35, 0);
+            mv(50, 0);
             for y in 0..9 {
                 for x in 0..9 {
                     printw(&grid.base_content[x][y].to_string());
